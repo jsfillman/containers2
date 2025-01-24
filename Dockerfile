@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ################################################################################
-ARG PARENT_IMAGE=ubuntu:24.04
+ARG PARENT_IMAGE=ubuntu:24.10
 FROM ${PARENT_IMAGE} AS build
 
 USER root
