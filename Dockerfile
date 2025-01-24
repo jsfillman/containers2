@@ -9,6 +9,7 @@ FROM ${PARENT_IMAGE} AS build
 USER root
 WORKDIR /tmp/
 
+RUN dpkg --add-architecture arm64
 RUN <<EOR
 apt-get -qq update
 # For: Slurm DEB build
