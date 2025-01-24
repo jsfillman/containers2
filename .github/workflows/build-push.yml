@@ -27,6 +27,6 @@ jobs:
       - name: Build and Push
         run: |
           docker buildx build --file Dockerfile --target ${{ matrix.target }} \
+            -t ghcr.io/${{ github.repository_owner }}/${{ matrix.target }}:${{ github.ref_name }} \
             -t ghcr.io/${{ github.repository_owner }}/${{ matrix.target }}:latest \
             --platform ${{ matrix.platform }} --push .
-
