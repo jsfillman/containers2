@@ -1,0 +1,126 @@
+---
+# SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  database:
+    image: docker.io/mariadb:latest
+    container_name: mariadb
+    hostname: mariadb
+    restart: on-failure
+    ports:
+      - 3306:3306
+    environment:
+      - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=yes
+    volumes:
+      - mariadb_data:/schedmd/slurm/ubuntu-24.04
+    networks:
+      - default
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  accounting:
+    build:
+      context: .
+      target: slurmdbd
+    container_name: slurmdbd
+    hostname: slurmdbd
+    entrypoint: /opt/entrypoint/slurmdbd.sh
+    restart: on-failure
+    ports:
+      - 6819:6819
+    volumes:
+      - ${PWD}/../.compose/etc/:/opt/etc/slurm/:ro
+      - ${PWD}/../.compose/entrypoint/:/opt/entrypoint/:ro
+    networks:
+      - default
+    depends_on:
+      database:
+        condition: service_started
+  control-plane:
+    build:
+      context: .
+      target: slurmctld
+    container_name: slurmctld
+    hostname: slurmctld
+    entrypoint: /opt/entrypoint/slurmctld.sh
+    restart: on-failure
+    ports:
+      - 6817:6817
+    volumes:
+      - ${PWD}/../.compose/etc/:/opt/etc/slurm/:ro
+      - ${PWD}/../.compose/entrypoint/:/opt/entrypoint/:ro
+    networks:
+      - default
+    depends_on:
+      accounting:
+        condition: service_started
+  compute:
+    build:
+      context: .
+      target: slurmd
+    container_name: slurmd
+    hostname: slurmd
+    environment:
+      - CONF_SERVER=slurmctld:6817
+    entrypoint: /opt/entrypoint/slurmd.sh
+    restart: on-failure
+    ports:
+      - 6818:6818
+    volumes:
+      - ${PWD}/../.compose/etc/:/opt/etc/slurm/:ro
+      - ${PWD}/../.compose/entrypoint/:/opt/entrypoint/:ro
+    networks:
+      - default
+    depends_on:
+      control-plane:
+        condition: service_started
+  restapi:
+    build:
+      context: .
+      target: slurmrestd
+    container_name: slurmrestd
+    hostname: slurmrestd
+    environment:
+      - SLURMRESTD_SECURITY=disable_unshare_files,disable_unshare_sysv,disable_user_check
+    entrypoint: /opt/entrypoint/slurmrestd.sh
+    restart: on-failure
+    ports:
+      - 6820:6820
+    volumes:
+      - ${PWD}/../.compose/etc/:/opt/etc/slurm/:ro
+      - ${PWD}/../.compose/entrypoint/:/opt/entrypoint/:ro
+    networks:
+      - default
+    depends_on:
+      control-plane:
+        condition: service_started
+  authcred:
+    build:
+      context: .
+      target: sackd
+    container_name: sackd
+    hostname: sackd
+    environment:
+      - CONF_SERVER=slurmctld:6817
+    entrypoint: /opt/entrypoint/sackd.sh
+    restart: on-failure
+    volumes:
+      - ${PWD}/../.compose/etc/:/opt/etc/slurm/:ro
+      - ${PWD}/../.compose/entrypoint/:/opt/entrypoint/:ro
+    networks:
+      - default
+    depends_on:
+      control-plane:
+        condition: service_started
+volumes:
+  mariadb_data:
+    driver: local
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: 127.0.0.1
