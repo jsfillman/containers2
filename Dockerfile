@@ -32,6 +32,7 @@ apt-get -qq update
 /tmp/scripts/patch-slurm.sh /tmp/patches /tmp/slurm
 mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' /tmp/slurm/debian/control
 ( cd /tmp/slurm/ && debuild -b -uc -us >/dev/null )
+dpkg-buildpackage -b -uc -us --host-arch=arm64
 apt-get clean && rm -rf /var/lib/apt/lists/*
 EOR
 
